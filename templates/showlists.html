@@ -1,0 +1,11 @@
+{%extends 'base.html'%}
+
+{% block url_to_stylesheet %}
+
+<link rel="stylesheet" href="{{ url_for("static", filename="css/showlists.css") }}">
+{% endblock url_to_stylesheet %}
+{% block content %}
+
+Hello
+
+{% endblock content %}

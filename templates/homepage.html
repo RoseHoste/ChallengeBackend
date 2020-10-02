@@ -1,0 +1,21 @@
+{%extends 'base.html'%}
+
+{% block url_to_stylesheet %}
+
+<link rel="stylesheet" href="{{ url_for("static", filename="css/homepage.css") }}">
+{% endblock url_to_stylesheet %}
+{% block content %}
+<div class="container.sm mt-4 mb-4 centered">
+    <h1>
+        Challenge technique Groover
+    </h1>
+</div>
+<div class="centered">
+    <p>Use the button to connect to Spotify.</p>
+    <p>
+       <a href="http://localhost:5000/auth" class="btn btn-success mt-4">Log in to Spotify</a>
+    </p>
+
+</div>
+
+{% endblock content %}
