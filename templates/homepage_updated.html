@@ -1,0 +1,19 @@
+{%extends 'base.html'%}
+
+{% block url_to_stylesheet %}
+
+<link rel="stylesheet" href="{{ url_for("static", filename="css/homepage.css") }}">
+{% endblock url_to_stylesheet %}
+{% block content %}
+<div class="container.sm mt-4 mb-4 centered">
+    <h1>
+        Challenge technique Groover
+    </h1>
+</div>
+<div class="centered">
+    <p>You are already connected to Spotify and have an access token. It seems your database of new releases is up to date</p>
+    
+
+</div>
+
+{% endblock content %}

@@ -3,7 +3,7 @@ from flask_migrate import Migrate, MigrateCommand
 
 from Flask_framework import AuthApp, db
 
-migrate = Migrate(AuthApp, db)
+migrate = Migrate(AuthApp, db, compare_type=True)
 manager = Manager(AuthApp)
 
 manager.add_command('db', MigrateCommand)
