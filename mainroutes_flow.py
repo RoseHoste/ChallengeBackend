@@ -6,26 +6,17 @@ import requests
 from datetime import *
 
 
-#from Groover
+#from Groover, slightly modified
 Authent=SpotifyAuth()
-
-
 #Blueprint definition
 routes = Blueprint('routes', __name__)
 
-
-
-#Load the first line of the two databases to determine if empty or not
-
-
-
-
 @routes.route('/')
 def homePage():
-
+    # Query the first line of each database to check if empty
     firstUser=UserCred.query.first()
     firstTrack=NewRelease.query.first()
-
+    firstArtists=ArtistsInfo.query.first()
 
     #initialize the table for the credentials only if it is empty as well as the first track
     #and the list of ID
@@ -43,8 +34,7 @@ def homePage():
         db.session.commit()
 
     firstUser=UserCred.query.first()
-    firstArtists=ArtistsInfo.query.first()
-    #Check if token is none, if yes button to log in to spotify
+    #Check if token is none, if yes prompt to log in to spotify
     if firstUser.access_token == "None" :
         return redirect('http://localhost:5000/auth')
     #If there is a token but it is expired, goes to /refresh to get a new one
@@ -54,16 +44,19 @@ def homePage():
     else:
         if firstUser.last_update < date.today():
             return redirect("http://localhost:5000/retrieval")
+        #Check if the artists information table is empty and if the new release database is up to date
         elif firstArtists is None and firstUser.last_update == date.today():
             return redirect("http://localhost:5000/api/artists_retrieval")
         else: 
             return render_template("homepage_updated.html")   
-    
+
+
+#Goes to the log in page from Spotify and if already logged in, goes back to auth/callback/{code}
 @routes.route('/auth')
 def Auth():
     return redirect(Authent.getUser())
 
-#Get back the token if token is None, if not goes bak to homepage
+#Get back the token if token is None, if not for some reason goes bak to homepage
 
 @routes.route('/auth/callback')
 def AuthUserToken():
@@ -77,7 +70,7 @@ def AuthUserToken():
         UserCred.query.filter_by(access_token="None").delete()
         #Use the provided function to get the token
         response = Authent.getUserToken(code)
-        #Put the new user credentials in the table and goes back to homepage
+        #Put the new user credentials in the table and goes back to "/"
         try:
             User=UserCred(
                 access_token = response['access_token'],
@@ -94,7 +87,7 @@ def AuthUserToken():
     #If the user goes to this page but has a token, does nothing
     #so that there is no unneeded query to the spotify API
     else:
-        return redirect("http://localhost:5000")
+        return redirect("http://localhost:5000/")
     
 
 #Page to refresh an expired token
@@ -108,6 +101,8 @@ def RefreshToken():
     #Update the credentials and goes back to homepage
     firstUser.access_token = response['access_token']
     firstUser.expires_at = datetime.now()+timedelta(seconds=response['expires_in'])
+    if "refresh_token" in response:
+        firstUser.refresh_token=response['refresh_token']
     db.session.commit()
     return redirect("http://localhost:5000")
 
@@ -115,13 +110,18 @@ def RefreshToken():
 
 #Fetches the new releases and put them in the correct table, only accessible if a valid token 
 #is in the UserCred table
+
 @routes.route('/retrieval')
 def retrieveNewRelease():
     firstUser=UserCred.query.first()
+
     #Check that the access token exists and is valid, if not for some reason
-    #renders error.html
+    #goes back to refresh to turn once more and get back here with a valid token
+
     if firstUser.access_token != 'None' and datetime.now() < firstUser.expires_at:
+
         #Post to spotify API to get the new release data, after having wiped down the table
+
         NewRelease.query.delete()
         headers = {
             "Authorization": "Bearer {}".format(firstUser.access_token)
@@ -129,10 +129,7 @@ def retrieveNewRelease():
         endpoint = "https://api.spotify.com/v1/browse/new-releases"
         request=requests.get(endpoint, headers=headers)
         
-        
         #If error, stop and go to error.html
-        
-        
         
         if request.status_code not in range(200,299):
             return render_template('error.html')
@@ -148,7 +145,9 @@ def retrieveNewRelease():
                 )
                 db.session.add(entry)
 
+            #Change the last update datapoint for the user
             firstUser.last_update = date.today()
+
             db.session.commit()
             return redirect("http://localhost:5000")
     else:
@@ -160,13 +159,14 @@ def retrieveNewRelease():
 
 @routes.route("/api/artists_retrieval")
 def GetArtistsInfo():
+
     #clear the artists table, loads up the credentials
+
     ArtistsInfo.query.delete()
     firstUser=UserCred.query.first()
 
-
-
     #Retrieve all of the artists ID, putting them on a list, creates the correct url to post
+
     Tracks=NewRelease.query.all()
     jsonAllTracks = jsonify([e.serialize() for e in Tracks]).get_json()
     list_of_id = []
@@ -214,7 +214,10 @@ def GetArtistsInfo():
             db.session.add(entry)
         db.session.commit()
             
-    return redirect("http://localhost:5000")
+        return redirect("http://localhost:5000")
+    #if the token exists but was expired for some reason, refreshes it and eventually come backs here
+    else:
+        return redirect("http://localhost:5000/refresh")
 
 #return a json if GET
 
@@ -225,5 +228,5 @@ def getJson():
         jsonAllArtists = jsonify([e.serialize() for e in ArtistsfromDB])
         return jsonAllArtists
     except requests.exceptions.RequestException as e:
-        return "Somehting went wrong while fetching the new releases :" +str(e)
+        return "Somehting went wrong while fetching the artists information:" +str(e)
 

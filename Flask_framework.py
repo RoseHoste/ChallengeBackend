@@ -1,18 +1,10 @@
 from flask import Flask
 from Auth import SpotifyAuth
 from flask_sqlalchemy import SQLAlchemy
-
+from SETUP import POSTGRES
 #Initialize the SQLAlchemy object with the credentials for the postgres connection
 db=SQLAlchemy()
 
-POSTGRES ={
-    'user':'groover',
-    'pw':'groover',
-    'db': 'challenge',
-    'host': 'localhost',
-    'port': '5432'
-
-}
 #Initiliaze the App with some configurations (utf-8 support, URI for database)
 SpotifyApp = Flask(__name__, static_url_path="", static_folder="static")
 
@@ -26,4 +18,4 @@ with SpotifyApp.app_context():
     db.session.commit()
     from mainroutes_flow import routes
     SpotifyApp.register_blueprint(routes)
-    SpotifyApp.config['DEBUG'] = True
+    SpotifyApp.config['DEBUG'] = False

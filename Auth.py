@@ -1,8 +1,7 @@
 import base64, json, requests, os, datetime
-
+from SETUP import CLIENT_CREDENTIALS
 #Declare Client_ID and client_SECRET as environnement variable
-os.environ['CLIENT_ID']="e18d6952d6854b6c9ab1a161a013e6e3"
-os.environ['CLIENT_SECRET']="7555b89676e34ac69a1c32c49b3dfef6"
+
 
 
 class SpotifyAuth(object):
@@ -10,8 +9,8 @@ class SpotifyAuth(object):
     SPOTIFY_URL_TOKEN = "https://accounts.spotify.com/api/token/"
     RESPONSE_TYPE = "code"
     HEADER = "application/x-www-form-urlencoded"
-    CLIENT_ID = os.environ.get("CLIENT_ID")
-    CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
+    CLIENT_ID = CLIENT_CREDENTIALS['client_id']
+    CLIENT_SECRET = CLIENT_CREDENTIALS['client_secret']
     CALLBACK_URL = "http://localhost:5000/auth"
     SCOPE = "user-read-email user-read-private"
 
