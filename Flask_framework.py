@@ -14,15 +14,16 @@ POSTGRES ={
 
 }
 #Initiliaze the App with some configurations (utf-8 support, URI for database)
-AuthApp = Flask(__name__, static_url_path="", static_folder="static")
+SpotifyApp = Flask(__name__, static_url_path="", static_folder="static")
 
-AuthApp.config['JSON_AS_ASCII'] = False
-AuthApp.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://%(user)s:\%(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES
-db.init_app(AuthApp)
+SpotifyApp.config['JSON_AS_ASCII'] = False
+SpotifyApp.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://%(user)s:\%(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES
+db.init_app(SpotifyApp)
 
 #Tell Flask where the routes are, initialize the db
-with AuthApp.app_context():
-    from mainroutes_flow import routes
-    AuthApp.register_blueprint(routes)
+with SpotifyApp.app_context():
     db.create_all()
-    AuthApp.config['DEBUG'] = True
+    db.session.commit()
+    from mainroutes_flow import routes
+    SpotifyApp.register_blueprint(routes)
+    SpotifyApp.config['DEBUG'] = True

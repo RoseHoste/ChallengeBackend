@@ -1,6 +1,6 @@
 from flask import Flask, Blueprint, render_template, request, jsonify, redirect, json
-from models import NewRelease, UserCred, ArtistsInfo
 from Flask_framework import db
+from models import NewRelease, UserCred, ArtistsInfo
 from Auth import SpotifyAuth
 import requests
 from datetime import *
@@ -17,30 +17,31 @@ routes = Blueprint('routes', __name__)
 
 #Load the first line of the two databases to determine if empty or not
 
-firstUser=UserCred.query.first()
-firstTrack=NewRelease.query.first()
 
-
-#initialize the table for the credentials only if it is empty as well as the first track
-#and the list of ID
-
-#set access_token as none and expires_at at yesterday so that the comparisons later work
-if firstUser is None:
-    dummyUser=UserCred("None", "None", datetime.now(),date.today()-timedelta(1))
-    db.session.add(dummyUser)
-    db.session.commit()
-
-#Set the date of the last update as yesterday so that the comparisons later work
-if firstTrack is None:
-    dummyTrack=NewRelease("dummy","dummy","dummy artists", "dummy id",date.today()-timedelta(1))
-    db.session.add(dummyTrack)
-    db.session.commit()
-
-#
 
 
 @routes.route('/')
 def homePage():
+
+    firstUser=UserCred.query.first()
+    firstTrack=NewRelease.query.first()
+
+
+    #initialize the table for the credentials only if it is empty as well as the first track
+    #and the list of ID
+
+    #set access_token as none and expires_at at yesterday so that the comparisons later work
+    if firstUser is None:
+        dummyUser=UserCred("None", "None", datetime.now(),date.today()-timedelta(1))
+        db.session.add(dummyUser)
+        db.session.commit()
+
+    #Set the date of the last update as yesterday so that the comparisons later work
+    if firstTrack is None:
+        dummyTrack=NewRelease("dummy","dummy","dummy artists", "dummy id",date.today()-timedelta(1))
+        db.session.add(dummyTrack)
+        db.session.commit()
+
     firstUser=UserCred.query.first()
     firstArtists=ArtistsInfo.query.first()
     #Check if token is none, if yes button to log in to spotify

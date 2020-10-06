@@ -1,10 +1,10 @@
 from flask_script import Manager
 from flask_migrate import Migrate, MigrateCommand
 
-from Flask_framework import AuthApp, db
+from Flask_framework import SpotifyApp, db
 
-migrate = Migrate(AuthApp, db, compare_type=True)
-manager = Manager(AuthApp)
+migrate = Migrate(SpotifyApp, db, compare_type=True)
+manager = Manager(SpotifyApp)
 
 manager.add_command('db', MigrateCommand)
 
