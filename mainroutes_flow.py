@@ -14,6 +14,7 @@ Authent=SpotifyAuth()
 routes = Blueprint('routes', __name__)
 
 
+
 #Load the first line of the two databases to determine if empty or not
 
 firstUser=UserCred.query.first()
@@ -35,49 +36,31 @@ if firstTrack is None:
     db.session.add(dummyTrack)
     db.session.commit()
 
+#
 
 
-#Homepage with different possibilites: need to connect to spotify and get token, automatically  refresh token
-#need to refresh the NewRelease table or everything's good
 @routes.route('/')
 def homePage():
     firstUser=UserCred.query.first()
+    firstArtists=ArtistsInfo.query.first()
     #Check if token is none, if yes button to log in to spotify
     if firstUser.access_token == "None" :
-        return render_template("homepage.html")
+        return redirect('http://localhost:5000/auth')
     #If there is a token but it is expired, goes to /refresh to get a new one
     elif firstUser.expires_at <= datetime.now():
        return redirect("http://localhost:5000/refresh")
     #There is a token, but checks for the last update of the NewRelease table
     else:
         if firstUser.last_update < date.today():
-            return render_template("homepage_connected.html")
+            return redirect("http://localhost:5000/retrieval")
+        elif firstArtists is None and firstUser.last_update == date.today():
+            return redirect("http://localhost:5000/api/artists_retrieval")
         else: 
-            return render_template("homepage_updated.html")
+            return render_template("homepage_updated.html")   
     
-    
-
-
-
-
-#List all the tracks to the database, more for me than for normale use, commented out for now
-"""
-@routes.route("/getalltracks")
-def get_alltracks():
-    try:
-        Tracks=NewRelease.query.all()
-        return jsonify([e.serialize() for e in Tracks])
-    except Exception as e:
-	    return(str(e))
-"""
-
-
-
-#Starts the authentication process
 @routes.route('/auth')
 def Auth():
     return redirect(Authent.getUser())
-
 
 #Get back the token if token is None, if not goes bak to homepage
 
@@ -104,7 +87,7 @@ def AuthUserToken():
             db.session.add(User)
             db.session.commit()
         except Exception as e:
-            return "Something went wrong while fetching the access token" + str(e)
+            return response.status_code
         return redirect("http://localhost:5000/")
     
     #If the user goes to this page but has a token, does nothing
@@ -168,7 +151,7 @@ def retrieveNewRelease():
             db.session.commit()
             return redirect("http://localhost:5000")
     else:
-        return render_template("error.html")
+        return redirect("http://localhost:5000/refresh")
 
         
 

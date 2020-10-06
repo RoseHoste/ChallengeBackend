@@ -1,6 +1,7 @@
 from Flask_framework import db
 import datetime
  
+#Class for the NewRelease table
 
 class NewRelease(db.Model):
     __tablename__ = "NewReleases"
@@ -31,7 +32,7 @@ class NewRelease(db.Model):
         }
 
 
-
+#Class for the users credentials table
 
 class UserCred(db.Model):
     __tablename__ = 'Credentials'
@@ -50,7 +51,7 @@ class UserCred(db.Model):
     def __repr__(self):
         return '<id {}>'.format(self.id)
         
-
+#Class for the artists information table
 
 class ArtistsInfo(db.Model):
     __tablename__ = 'artists'
@@ -58,5 +59,37 @@ class ArtistsInfo(db.Model):
     name = db.Column(db.String(200))
     genre1 = db.Column(db.String(100))
     genre2 = db.Column(db.String(100))
+    genre3 = db.Column(db.String(100))
     href = db.Column(db.String(100))
     popularity = db.Column(db.Integer)
+    followers = db.Column(db.Integer)
+    artists_identifier = db.Column(db.String(60))
+
+    def __init__(self, name, genre1, genre2, genre3, href, popularity, followers,
+    artists_identifier
+    
+    ):
+        self.name = name
+        self.genre1 = genre1
+        self.genre2 = genre2
+        self.genre3 = genre3
+        self.href = href
+        self.popularity = popularity
+        self.followers = followers
+        self.artists_identifier = artists_identifier
+
+    def serialize(self):
+        return {
+            'id': self.id, 
+            'name': self.name,
+            'genre': [genre for genre in [self.genre1, self.genre2, self.genre3] if genre!= 'None'],
+            'href' : self.href,
+            'popularity': self.popularity,
+            'followers': self.followers,
+            'artists_identifier': self.artists_identifier 
+        }
+
+    def __repr__(self):
+        return '<id {}>'.format(self.id)
+
+

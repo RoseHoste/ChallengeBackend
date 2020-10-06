@@ -50,7 +50,7 @@ class SpotifyAuth(object):
         if "error" in response:
             return response
         else:
-            if "refresh token" in response:
+            if "refresh_token" in response:
                 return {
                     key: response[key]
                     for key in ["access_token", "expires_in", "refresh_token"]
