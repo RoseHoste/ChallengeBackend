@@ -18,38 +18,23 @@ routes = Blueprint('routes', __name__)
 def homePage():
     # Query the first line of each database to check if empty
     firstUser=UserCred.query.first()
-    firstTrack=NewRelease.query.first()
-    firstArtists=ArtistsInfo.query.first()
-
-    #initialize the table for the credentials only if it is empty as well as the first track
-    #and the list of ID
-
-    #set access_token as none and expires_at at yesterday so that the comparisons later work
-    if firstUser is None:
-        dummyUser=UserCred("None", "None", datetime.now(),date.today()-timedelta(1))
-        db.session.add(dummyUser)
-        db.session.commit()
-
-    #Set the date of the last update as yesterday so that the comparisons later work
-    if firstTrack is None:
-        dummyTrack=NewRelease("dummy","dummy","dummy artists", "dummy id",date.today()-timedelta(1))
-        db.session.add(dummyTrack)
-        db.session.commit()
-
-    firstUser=UserCred.query.first()
     #Check if token is none, if yes prompt to log in to spotify
-    if firstUser.access_token == "None" :
+    if firstUser is None :
         return redirect(base_local_url+"auth")
-    #If there is a token but it is expired, goes to /refresh to get a new one
-    elif firstUser.expires_at <= datetime.now():
-       return redirect(base_local_url+"refresh")
     #There is a token, but checks for the last update of the NewRelease table
     else:
+        firstArtists=ArtistsInfo.query.first()
+        #If the last update is before today
         if firstUser.last_update < date.today():
-            return redirect(base_local_url+"retrieval")
+            #If the token is expired
+            if firstUser.expires_at <= datetime.now():
+                return redirect(base_local_url+"refresh")
+            else:
+                return redirect(base_local_url+"releases_retrieval")
         #Check if the artists information table is empty and if the new release database is up to date
         elif firstArtists is None and firstUser.last_update == date.today():
             return redirect(base_local_url+"api/artists_retrieval")
+        #If the last update is today and the artist table is not empty
         else: 
             return render_template("homepage_updated.html")   
 
@@ -59,7 +44,7 @@ def homePage():
 def Auth():
     return redirect(Authent.getUser())
 
-#Get back the token if token is None, if not for some reason goes bak to homepage
+#Get back the token if token is None, if not for some reason goes back to homepage
 
 @routes.route('/auth/callback')
 def AuthUserToken():
@@ -89,7 +74,7 @@ def AuthUserToken():
     
     #If the user goes to this page but has a token, does nothing
     #so that there is no unneeded query to the spotify API
-    if firstUser.accestoken != None:
+    else:
         return redirect(base_local_url)
     
 
@@ -114,13 +99,16 @@ def RefreshToken():
 #Fetches the new releases and put them in the correct table, only accessible if a valid token 
 #is in the UserCred table
 
-@routes.route('/retrieval')
+@routes.route('/releases_retrieval')
 def retrieveNewRelease():
     firstUser=UserCred.query.first()
+    #if there is no need to refresh the new release table, go back to homepage
+    if firstUser.last_update == date.today():
+        return redirect(base_local_url)
 
     #Check that the access token exists and is valid, if not for some reason
     #goes back to refresh to turn once more and get back here with a valid token
-
+    
     if firstUser.access_token != 'None' and datetime.now() < firstUser.expires_at:
 
         #Post to spotify API to get the new release data, after having wiped down the table
@@ -152,6 +140,9 @@ def retrieveNewRelease():
             firstUser.last_update = date.today()
 
             db.session.commit()
+
+            #Wipes down the artists info table to prepare for its repopulation
+            ArtistsInfo.query.delete()
             return redirect(base_local_url)
     else:
         return redirect(base_local_url+"refresh")
@@ -162,11 +153,8 @@ def retrieveNewRelease():
 
 @routes.route("/api/artists_retrieval")
 def GetArtistsInfo():
-    #clear the artists table, loads up the credentials  
-    ArtistsInfo.query.delete()
+    #loads up the credentials  
     firstUser=UserCred.query.first()
-
-
 
     #Retrieve all of the artists ID, putting them on a list, creates the correct url to post
     lookup_url = GetArtistsUrl()
@@ -186,11 +174,14 @@ def GetArtistsInfo():
 
         PopulateTable(json_of_artists)
         
+        #Goes back to hompeage
+
         return redirect(base_local_url)
     else:
         return redirect(base_local_url+"refresh")
 
-#return a json if GET
+#return a json
+#The GET method is built in Blueprint route so it is not explicitely declared
 
 @routes.route("/api/artists")
 def getJson():

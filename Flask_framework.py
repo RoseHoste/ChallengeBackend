@@ -18,4 +18,4 @@ with SpotifyApp.app_context():
     db.session.commit()
     from MainRoutes import routes
     SpotifyApp.register_blueprint(routes)
-    SpotifyApp.config['DEBUG'] = False
+    SpotifyApp.config['DEBUG'] = True
