@@ -22,7 +22,7 @@ All stability, performance, efficiency adds-up are highly recommended.
 
 ## Choices made
 - I went with Flask because it's the framework I know the most about
-- To initiliaze the app, you need to set up a database in postgresql (I used v12) and modify the username, password and name of the database in `SETUP.py` as well as the client secret.
+- To initiliaze the app, you need to set up a database in postgresql, listening on port 5432 (I used v12) and modify the username, password and name of the database in `SETUP.py`, the client secret and the number of new releases the app will get from Spotify (from 1 to 50, default is 20).
 - The requirements for the python packages are in the standard requirements.txt file. In terminal, cd to the app folder and run `pip install -r requirements.txt`
 - Still cd in the app folder, run 'python manage.py db init', then 'python manage.py db migrate' and finally 'python manage.py db upgrade'. You only need to do these steps for the first use of the app.
 

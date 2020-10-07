@@ -1,8 +1,5 @@
 import base64, json, requests, os, datetime
 from SETUP import CLIENT_CREDENTIALS
-#Declare Client_ID and client_SECRET as environnement variable
-
-
 
 class SpotifyAuth(object):
     SPOTIFY_URL_AUTH = "https://accounts.spotify.com/authorize/"
@@ -26,7 +23,7 @@ class SpotifyAuth(object):
         )
 
     def getToken(self, code, client_id, client_secret, redirect_uri):
-        #Post the request to spotify API and get back the Token if no error
+        #Post the request to spotify API and get back the Token if no error through handleToken()
         body = {
             "grant_type": "authorization_code",
             "code": code,
@@ -72,6 +69,8 @@ class SpotifyAuth(object):
         )
 
         return self.handleToken(json.loads(post_refresh.text))
+    
+    
     def getUser(self):
         return self.getAuth(
             self.CLIENT_ID, f"{self.CALLBACK_URL}/callback", self.SCOPE,

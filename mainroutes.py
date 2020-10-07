@@ -1,85 +1,65 @@
 from flask import Flask, Blueprint, render_template, request, jsonify, redirect, json
-from models import NewRelease, UserCred, ArtistsInfo
 from Flask_framework import db
+from models import NewRelease, UserCred, ArtistsInfo
 from Auth import SpotifyAuth
 import requests
 from datetime import *
+from PrepArtists import *
+from SETUP import limit
 
+base_local_url = "http://localhost:5000/"
 
-#from Groover
+#from Groover, slightly modified
 Authent=SpotifyAuth()
-
-
 #Blueprint definition
 routes = Blueprint('routes', __name__)
 
-
-#Load the first line of the two databases to determine if empty or not
-
-firstUser=UserCred.query.first()
-firstTrack=NewRelease.query.first()
-
-
-#initialize the table for the credentials only if it is empty as well as the first track
-#and the list of ID
-
-#set access_token as none and expires_at at yesterday so that the comparisons later work
-if firstUser is None:
-    dummyUser=UserCred("None", "None", datetime.now(),date.today()-timedelta(1))
-    db.session.add(dummyUser)
-    db.session.commit()
-
-#Set the date of the last update as yesterday so that the comparisons later work
-if firstTrack is None:
-    dummyTrack=NewRelease("dummy","dummy","dummy artists", "dummy id",date.today()-timedelta(1))
-    db.session.add(dummyTrack)
-    db.session.commit()
-
-
-
-#Homepage with different possibilites: need to connect to spotify and get token, automatically  refresh token
-#need to refresh the NewRelease table or everything's good
 @routes.route('/')
 def homePage():
+    # Query the first line of each database to check if empty
     firstUser=UserCred.query.first()
-    #Check if token is none, if yes button to log in to spotify
+    firstTrack=NewRelease.query.first()
+    firstArtists=ArtistsInfo.query.first()
+
+    #initialize the table for the credentials only if it is empty as well as the first track
+    #and the list of ID
+
+    #set access_token as none and expires_at at yesterday so that the comparisons later work
+    if firstUser is None:
+        dummyUser=UserCred("None", "None", datetime.now(),date.today()-timedelta(1))
+        db.session.add(dummyUser)
+        db.session.commit()
+
+    #Set the date of the last update as yesterday so that the comparisons later work
+    if firstTrack is None:
+        dummyTrack=NewRelease("dummy","dummy","dummy artists", "dummy id",date.today()-timedelta(1))
+        db.session.add(dummyTrack)
+        db.session.commit()
+
+    firstUser=UserCred.query.first()
+    #Check if token is none, if yes prompt to log in to spotify
     if firstUser.access_token == "None" :
-        return render_template("homepage.html")
+        return redirect(base_local_url+"auth")
     #If there is a token but it is expired, goes to /refresh to get a new one
     elif firstUser.expires_at <= datetime.now():
-       return redirect("http://localhost:5000/refresh")
+       return redirect(base_local_url+"refresh")
     #There is a token, but checks for the last update of the NewRelease table
     else:
         if firstUser.last_update < date.today():
-            return render_template("homepage_connected.html")
+            return redirect(base_local_url+"retrieval")
+        #Check if the artists information table is empty and if the new release database is up to date
+        elif firstArtists is None and firstUser.last_update == date.today():
+            return redirect(base_local_url+"api/artists_retrieval")
         else: 
-            return render_template("homepage_updated.html")
-    
-    
+            return render_template("homepage_updated.html")   
 
 
-
-
-#List all the tracks to the database, more for me than for normale use, commented out for now
-"""
-@routes.route("/getalltracks")
-def get_alltracks():
-    try:
-        Tracks=NewRelease.query.all()
-        return jsonify([e.serialize() for e in Tracks])
-    except Exception as e:
-	    return(str(e))
-"""
-
-
-
-#Starts the authentication process
+#Goes to the log in page from Spotify and if already logged in, goes back to auth/callback/{code}
 @routes.route('/auth')
 def Auth():
     return redirect(Authent.getUser())
 
-
-#Get back the token if token is None, if not goes bak to homepage
+#Get back the token if token is None, if not for some reason goes bak to homepage
 
 @routes.route('/auth/callback')
 def AuthUserToken():
@@ -93,7 +73,7 @@ def AuthUserToken():
         UserCred.query.filter_by(access_token="None").delete()
         #Use the provided function to get the token
         response = Authent.getUserToken(code)
-        #Put the new user credentials in the table and goes back to homepage
+        #Put the new user credentials in the table and goes back to "/"
         try:
             User=UserCred(
                 access_token = response['access_token'],
@@ -104,13 +84,13 @@ def AuthUserToken():
             db.session.add(User)
             db.session.commit()
         except Exception as e:
-            return "Something went wrong while fetching the access token" + str(e)
-        return redirect("http://localhost:5000/")
+            return response.status_code
+        return redirect(base_local_url)
     
     #If the user goes to this page but has a token, does nothing
     #so that there is no unneeded query to the spotify API
-    else:
-        return redirect("http://localhost:5000")
+    if firstUser.accestoken != None:
+        return redirect(base_local_url)
     
 
 #Page to refresh an expired token
@@ -124,31 +104,35 @@ def RefreshToken():
     #Update the credentials and goes back to homepage
     firstUser.access_token = response['access_token']
     firstUser.expires_at = datetime.now()+timedelta(seconds=response['expires_in'])
+    if "refresh_token" in response:
+        firstUser.refresh_token=response['refresh_token']
     db.session.commit()
-    return redirect("http://localhost:5000")
+    return redirect(base_local_url)
 
 
 
 #Fetches the new releases and put them in the correct table, only accessible if a valid token 
 #is in the UserCred table
+
 @routes.route('/retrieval')
 def retrieveNewRelease():
     firstUser=UserCred.query.first()
+
     #Check that the access token exists and is valid, if not for some reason
-    #renders error.html
+    #goes back to refresh to turn once more and get back here with a valid token
+
     if firstUser.access_token != 'None' and datetime.now() < firstUser.expires_at:
+
         #Post to spotify API to get the new release data, after having wiped down the table
+
         NewRelease.query.delete()
         headers = {
             "Authorization": "Bearer {}".format(firstUser.access_token)
             }
-        endpoint = "https://api.spotify.com/v1/browse/new-releases"
+        endpoint = f"https://api.spotify.com/v1/browse/new-releases?limit={limit}"
         request=requests.get(endpoint, headers=headers)
         
-        
         #If error, stop and go to error.html
-        
-        
         
         if request.status_code not in range(200,299):
             return render_template('error.html')
@@ -164,11 +148,13 @@ def retrieveNewRelease():
                 )
                 db.session.add(entry)
 
+            #Change the last update datapoint for the user
             firstUser.last_update = date.today()
+
             db.session.commit()
-            return redirect("http://localhost:5000")
+            return redirect(base_local_url)
     else:
-        return render_template("error.html")
+        return redirect(base_local_url+"refresh")
 
         
 
@@ -176,22 +162,14 @@ def retrieveNewRelease():
 
 @routes.route("/api/artists_retrieval")
 def GetArtistsInfo():
-    #clear the artists table, loads up the credentials
+    #clear the artists table, loads up the credentials  
     ArtistsInfo.query.delete()
     firstUser=UserCred.query.first()
 
 
 
     #Retrieve all of the artists ID, putting them on a list, creates the correct url to post
-    Tracks=NewRelease.query.all()
-    jsonAllTracks = jsonify([e.serialize() for e in Tracks]).get_json()
-    list_of_id = []
-    for item in jsonAllTracks:
-        list_of_id.append(item['artists_identifier'])
-    endpoint = "https://api.spotify.com/v1/artists"
-    url_id = ",".join([item for item in list_of_id])
-    
-    lookup_url = endpoint+"?ids="+url_id
+    lookup_url = GetArtistsUrl()
 
 
     #Checks for an existing and not expired user token
@@ -204,33 +182,13 @@ def GetArtistsInfo():
         except requests.exceptions.RequestException as e:
             return "Somehting went wrong while fetching the artists information:" +str(e)
 
+        #Sends the data to the correct table and commits
 
-        for artist in json_of_artists['artists']:
-
-            #For now, 3 genres at a maximum are stored but easily expendable
-            #Completes the array provided by spotify, slices it back to 3 items
-            #and unpacks it to the correct variable
-
-            genre_completed = artist['genres'] + ["None"]*(3-len(artist['genres']))
-            genre_completed = genre_completed[0:3]
-            genre1, genre2, genre3 = (genre_completed[i] for i in range(3))
-
-            #Create the new entry in the artists table and adds it, commit at the end 
-            #of the for loop
-            entry = ArtistsInfo(
-                name= artist['name'],
-                genre1 = genre1,
-                genre2 = genre2,
-                genre3 = genre3,
-                href = artist['href'],
-                popularity = artist['popularity'],
-                followers = artist['followers']['total'],
-                artists_identifier = artist['id']
-            )
-            db.session.add(entry)
-        db.session.commit()
-            
-    return redirect("http://localhost:5000")
+        PopulateTable(json_of_artists)
+        
+        return redirect(base_local_url)
+    else:
+        return redirect(base_local_url+"refresh")
 
 #return a json if GET
 
@@ -241,5 +199,5 @@ def getJson():
         jsonAllArtists = jsonify([e.serialize() for e in ArtistsfromDB])
         return jsonAllArtists
     except requests.exceptions.RequestException as e:
-        return "Somehting went wrong while fetching the new releases :" +str(e)
+        return "Something went wrong while fetching the artists information:" +str(e)
 
