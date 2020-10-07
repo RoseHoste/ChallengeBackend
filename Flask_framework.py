@@ -16,6 +16,6 @@ db.init_app(SpotifyApp)
 with SpotifyApp.app_context():
     db.create_all()
     db.session.commit()
-    from mainroutes_flow import routes
+    from MainRoutes import routes
     SpotifyApp.register_blueprint(routes)
-    SpotifyApp.config['DEBUG'] = True
+    SpotifyApp.config['DEBUG'] = False
